@@ -7,9 +7,12 @@ import dash
 import math
 import datetime as dt
 import pandas as pd
+import numpy as np
+import base64
 from dash.dependencies import Input, Output, State, ClientsideFunction
 import dash_core_components as dcc
 import dash_html_components as html
+
 
 # Multi-dropdown options
 from controls import COUNTIES, WELL_STATUSES, WELL_TYPES, WELL_COLORS
@@ -18,6 +21,7 @@ from controls import COUNTIES, WELL_STATUSES, WELL_TYPES, WELL_COLORS
 # get relative data folder
 PATH = pathlib.Path(__file__).parent
 DATA_PATH = PATH.joinpath("data").resolve()
+LogList = []
 
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}],
@@ -86,6 +90,7 @@ layout = dict(
 app.layout = html.Div(
     [
         dcc.Store(id="aggregate_data"),
+        dcc.Store(id='input_data'),
         # empty Div to trigger javascript file for graph resizing
         html.Div(id="output-clientside"),
         html.Div(
@@ -153,6 +158,13 @@ app.layout = html.Div(
                                     accept=".txt",
                                 ),
                             ],
+                        ),
+                        html.P(
+                            "Selected File:",
+                            className="filename_label",
+                        ),
+                        html.P(
+                            id="log-name"
                         ),
                         html.P(
                             "Filter by construction date (or select range in histogram):",
@@ -279,6 +291,12 @@ app.layout = html.Div(
             ],
             className="row flex-display",
         ),
+        dcc.Textarea(
+            id='textarea-example',
+            value='Textarea content initialized\nwith multiple lines of text',
+            style={'width': '100%', 'height': 300},
+        ),
+        html.Div(id='textarea-example-output', style={'whiteSpace': 'pre-line'})
     ],
     id="mainContainer",
     style={"display": "flex", "flex-direction": "column"},
@@ -557,66 +575,6 @@ def make_individual_figure(main_graph_hover):
     return figure
 
 
-# Selectors, main graph -> aggregate graph
-@app.callback(
-    Output("aggregate_graph", "figure"),
-    [
-        Input("well_statuses", "value"),
-        Input("well_types", "value"),
-        Input("year_slider", "value"),
-        Input("main_graph", "hoverData"),
-    ],
-)
-def make_aggregate_figure(well_statuses, well_types, year_slider, main_graph_hover):
-
-    layout_aggregate = copy.deepcopy(layout)
-
-    if main_graph_hover is None:
-        main_graph_hover = {
-            "points": [
-                {"curveNumber": 4, "pointNumber": 569, "customdata": 31101173130000}
-            ]
-        }
-
-    chosen = [point["customdata"] for point in main_graph_hover["points"]]
-    well_type = dataset[chosen[0]]["Well_Type"]
-    dff = filter_dataframe(df, well_statuses, well_types, year_slider)
-
-    selected = dff[dff["Well_Type"] == well_type]["API_WellNo"].values
-    index, gas, oil, water = produce_aggregate(selected, year_slider)
-
-    data = [
-        dict(
-            type="scatter",
-            mode="lines",
-            name="Gas Produced (mcf)",
-            x=index,
-            y=gas,
-            line=dict(shape="spline", smoothing="2", color="#F9ADA0"),
-        ),
-        dict(
-            type="scatter",
-            mode="lines",
-            name="Oil Produced (bbl)",
-            x=index,
-            y=oil,
-            line=dict(shape="spline", smoothing="2", color="#849E68"),
-        ),
-        dict(
-            type="scatter",
-            mode="lines",
-            name="Water Produced (bbl)",
-            x=index,
-            y=water,
-            line=dict(shape="spline", smoothing="2", color="#59C3C3"),
-        ),
-    ]
-    layout_aggregate["title"] = "Aggregate: " + WELL_TYPES[well_type]
-
-    figure = dict(data=data, layout=layout_aggregate)
-    return figure
-
-
 # Selectors, main graph -> pie graph
 @app.callback(
     Output("pie_graph", "figure"),
@@ -730,6 +688,159 @@ def make_count_figure(well_statuses, well_types, year_slider):
     figure = dict(data=data, layout=layout_count)
     return figure
 
+def parseContents(contents):
+    stringlist = []
+    if contents:
+        content_type, content_string = contents.split(",")
+        
+        decoded = base64.b64decode(content_string)
+        string = str(decoded, 'cp1252')
+
+        decodedlist = decoded.split(b'\r\n')
+        for i in range(1, len(decodedlist)):
+            stringlist.append(str(decodedlist[i], 'cp1252'))
+
+    return stringlist[0:]
+
+def ExtractStringData(InputList, TestKey, EndTrim, OutputType):
+  DataList = [0]                                 # Initialize DataList variable
+  for i in range(0, len(InputList)):             # Iterate over each entry
+    testobj = InputList[i]                       #
+    if (testobj[0:len(TestKey)] == TestKey):     #
+      testobj = testobj[len(TestKey):]           #
+      testobj = testobj[:len(testobj)-EndTrim]   #
+      if (testobj != "NA"):                      #
+        if (OutputType == "float"):              #
+          DataList.append(float(testobj))        #
+        else:                                    #
+          DataList.append(testobj)               #
+  return DataList[1:]                  
+
+def CalcTotalTime(InputList):
+  DataList = []
+  for i in range(0,len(InputList)):
+      Time = 0
+      Time += float(InputList[i][0:2])*3600       # hours
+      Time += float(InputList[i][3:5])*60         # minutes
+      Time += float(InputList[i][6:8])            # seconds
+      Time += float(InputList[i][9:])/1000        # milliseconds
+      DataList.append(Time)
+      if (i != 0):
+        DataList[i] -= DataList[0]
+  DataList[0] = 0
+  return DataList
+
+# Callback for file name
+@app.callback(
+    Output("log-name", "children"),
+    [Input('upload-data', 'filename')]
+)
+def GetLogName(filename):
+    if (filename):
+        outputName = filename
+    else:
+        outputName = ""
+    return outputName
+
+# Callback for input data
+@app.callback(
+    Output("input_data", "data"),
+    [Input('upload-data', 'contents')]
+)
+def txtToList(contents):
+    outputList = []
+    if contents:
+        outputList = parseContents(contents)
+    return outputList
+
+#Test callback for text box
+@app.callback(
+    Output('textarea-example', 'value'),
+    [Input('input_data', 'data')]
+)
+def RawTextBox(data):
+    #content_type, content_string = contents.split(',')
+    if data:
+        output = "List length: %d" %(len(data))
+        return output
+    else:
+        return 'No log file selected'
+
+# Testing graph
+#@app.callback(
+#
+#)
+
+
+#MY TEST CALLBACK
+#@app.callback(
+#    Output("aggregate_graph", "figure"),
+#    Input('upload-data', 'contents'),
+#    State('upload-data', 'filename'),
+#    State('upload-data', 'last_modified')
+#)
+#def updatePosTimeGraph(contents, filename, last_modified):
+
+#    return 0
+
+# Selectors, main graph -> aggregate graph
+# @app.callback(
+#     Output("aggregate_graph", "figure"),
+#     [
+#         Input("well_statuses", "value"),
+#         Input("well_types", "value"),
+#         Input("year_slider", "value"),
+#         Input("main_graph", "hoverData"),
+#     ],
+# )
+# def make_aggregate_figure(well_statuses, well_types, year_slider, main_graph_hover):
+
+#     layout_aggregate = copy.deepcopy(layout)
+
+#     if main_graph_hover is None:
+#         main_graph_hover = {
+#             "points": [
+#                 {"curveNumber": 4, "pointNumber": 569, "customdata": 31101173130000}
+#             ]
+#         }
+
+#     chosen = [point["customdata"] for point in main_graph_hover["points"]]
+#     well_type = dataset[chosen[0]]["Well_Type"]
+#     dff = filter_dataframe(df, well_statuses, well_types, year_slider)
+
+#     selected = dff[dff["Well_Type"] == well_type]["API_WellNo"].values
+#     index, gas, oil, water = produce_aggregate(selected, year_slider)
+
+#     data = [
+#         dict(
+#             type="scatter",
+#             mode="lines",
+#             name="Gas Produced (mcf)",
+#             x=index,
+#             y=gas,
+#             line=dict(shape="spline", smoothing="2", color="#F9ADA0"),
+#         ),
+#         dict(
+#             type="scatter",
+#             mode="lines",
+#             name="Oil Produced (bbl)",
+#             x=index,
+#             y=oil,
+#             line=dict(shape="spline", smoothing="2", color="#849E68"),
+#         ),
+#         dict(
+#             type="scatter",
+#             mode="lines",
+#             name="Water Produced (bbl)",
+#             x=index,
+#             y=water,
+#             line=dict(shape="spline", smoothing="2", color="#59C3C3"),
+#         ),
+#     ]
+#     layout_aggregate["title"] = "Aggregate: " + WELL_TYPES[well_type]
+
+#     figure = dict(data=data, layout=layout_aggregate)
+#     return figure
 
 # Main
 if __name__ == "__main__":
