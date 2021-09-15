@@ -22,6 +22,7 @@ from controls import COUNTIES, WELL_STATUSES, WELL_TYPES, WELL_COLORS
 PATH = pathlib.Path(__file__).parent
 DATA_PATH = PATH.joinpath("data").resolve()
 LogList = []
+PrintStart = 20
 
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}],
@@ -699,6 +700,12 @@ def parseContents(contents):
         decodedlist = decoded.split(b'\r\n')
         for i in range(1, len(decodedlist)):
             stringlist.append(str(decodedlist[i], 'cp1252'))
+        
+        testkey = "Entering Printing Procedure"
+        for i in range(0,len(decodedlist)):
+            testobj = decodedlist[i]
+            if(testobj[0:len(testkey)] == testkey):
+                PrintStart = i
 
     return stringlist[0:]
 
@@ -759,17 +766,44 @@ def txtToList(contents):
     [Input('input_data', 'data')]
 )
 def RawTextBox(data):
-    #content_type, content_string = contents.split(',')
     if data:
-        output = "List length: %d" %(len(data))
+        #output = "List length: %d" %(len(data))
+        stagePos = ExtractStringData(data[PrintStart:], "Stage is currently at: ", 3, "string")
+        #output = ",".join(stagePos)
+        output = "Print start: %d" %(PrintStart) 
         return output
     else:
         return 'No log file selected'
 
 # Testing graph
-#@app.callback(
-#
-#)
+@app.callback(
+    Output('aggregate_graph', 'figure'),
+    [Input('input_data', 'data')]
+)
+def updateStagePosGraph(data):
+    if data:
+        #layout_StagePos = copy.deepcopy(layout)
+        stagePos = ExtractStringData(data[PrintStart:], "Stage is currently at: ", 3, "float")
+        #ExpEndList = ExtractStringData(data,  "Exp. end: ", 0, "str")
+        #time = list(CalcTotalTime(ExpEndList))
+        time = range(0,len(stagePos))
+
+        data = [
+            dict(
+                type="scatter",
+                mode="lines",
+                name="Gas Produced (mcf)",
+                x=time,
+                y=stagePos,
+                line=dict(shape="spline", smoothing="2", color="#F9ADA0"),
+            )
+        ]
+
+        #layout_StagePos["title"] = "Aggregate: "
+
+        #figure = dict(data=data, layout=layout)
+        #return figure
+
 
 
 #MY TEST CALLBACK
