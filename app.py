@@ -9,6 +9,8 @@ import datetime as dt
 import pandas as pd
 import numpy as np
 import base64
+import plotly.graph_objects as go
+import plotly.express as px
 from dash.dependencies import Input, Output, State, ClientsideFunction
 import dash_core_components as dcc
 import dash_html_components as html
@@ -79,6 +81,8 @@ layout = dict(
     paper_bgcolor="#F9F9F9",
     legend=dict(font=dict(size=10), orientation="h"),
     title="Satellite Overview",
+    xaxis={"title": ""},
+    yaxis={"title": ""},
     mapbox=dict(
         accesstoken=mapbox_access_token,
         style="light",
@@ -706,8 +710,42 @@ def parseContents(contents):
             testobj = decodedlist[i]
             if(testobj[0:len(testkey)] == testkey):
                 PrintStart = i
-
     return stringlist[0:]
+    
+def GenerateTable(InputList, Keys, Remove):
+    TableData = InputList[1:len(InputList)]
+    TableIndex = Keys
+    TableTitle = InputList[0]
+    
+    if (Remove):
+        loopCount = 0
+        for i in (range(0,len(TableData))):
+            if (TableData[loopCount] == []):
+                TableData.pop(loopCount)
+                TableIndex.pop(loopCount)
+            else:
+                loopCount += 1
+    df = pd.DataFrame(TableData, 
+                        index = TableIndex, 
+                        columns = [TableTitle])
+    return df
+
+def PrintModeTable(inputList, initStart, initEnd):
+    PrintModeList = ["Print Modes"]
+    PrintModeKeys = []
+    PrintModeKeys.append("Printer Type: ")          # Printer Type  
+    PrintModeKeys.append("Projection Mode: ")       # Projection Mode
+    PrintModeKeys.append("Motion Mode: ")           # Motion Mode 
+    PrintModeKeys.append("Pumping: ")               # Pumping Mode
+
+    PrintModeList.append(ExtractStringData(inputList[initStart:initEnd],PrintModeKeys[0],0,"str")) 
+    PrintModeList.append(ExtractStringData(inputList[initStart:initEnd],PrintModeKeys[1],0,"str")) 
+    PrintModeList.append(ExtractStringData(inputList[initStart:initEnd],PrintModeKeys[2],0,"str"))
+    PrintModeList.append(ExtractStringData(inputList[initStart:initEnd],PrintModeKeys[3],0,"str"))
+    
+    ModeTable = GenerateTable(PrintModeList, PrintModeKeys, False)
+    return ModeTable
+
 
 def ExtractStringData(InputList, TestKey, EndTrim, OutputType):
   DataList = [0]                                 # Initialize DataList variable
@@ -724,18 +762,19 @@ def ExtractStringData(InputList, TestKey, EndTrim, OutputType):
   return DataList[1:]                  
 
 def CalcTotalTime(InputList):
-  DataList = []
-  for i in range(0,len(InputList)):
-      Time = 0
-      Time += float(InputList[i][0:2])*3600       # hours
-      Time += float(InputList[i][3:5])*60         # minutes
-      Time += float(InputList[i][6:8])            # seconds
-      Time += float(InputList[i][9:])/1000        # milliseconds
-      DataList.append(Time)
-      if (i != 0):
-        DataList[i] -= DataList[0]
-  DataList[0] = 0
-  return DataList
+    DataList = []
+    if (InputList):
+        for i in range(0,len(InputList)):
+            Time = 0
+            Time += float(InputList[i][0:2])*3600       # hours
+            Time += float(InputList[i][3:5])*60         # minutes
+            Time += float(InputList[i][6:8])            # seconds
+            Time += float(InputList[i][9:])/1000        # milliseconds
+            DataList.append(Time)
+            if (i != 0):
+                DataList[i] -= DataList[0]
+        DataList[0] = 0
+    return DataList
 
 # Callback for file name
 @app.callback(
@@ -767,42 +806,48 @@ def txtToList(contents):
 )
 def RawTextBox(data):
     if data:
-        #output = "List length: %d" %(len(data))
-        stagePos = ExtractStringData(data[PrintStart:], "Stage is currently at: ", 3, "string")
+        output = "List length: %d" %(len(data))
+        #stagePos = ExtractStringData(data[PrintStart:], "Stage is currently at: ", 3, "string")
         #output = ",".join(stagePos)
-        output = "Print start: %d" %(PrintStart) 
+        #output = "Print start: %d" %(PrintStart) 
         return output
     else:
         return 'No log file selected'
 
 # Testing graph
-@app.callback(
-    Output('aggregate_graph', 'figure'),
-    [Input('input_data', 'data')]
-)
-def updateStagePosGraph(data):
-    if data:
-        #layout_StagePos = copy.deepcopy(layout)
-        stagePos = ExtractStringData(data[PrintStart:], "Stage is currently at: ", 3, "float")
-        #ExpEndList = ExtractStringData(data,  "Exp. end: ", 0, "str")
-        #time = list(CalcTotalTime(ExpEndList))
-        time = range(0,len(stagePos))
+# @app.callback(
+#     Output("aggregate_graph", "figure"),
+#     [Input('input_data', 'data')],
+# )
+# def updateStagePosGraph(data):
+#     df = px.data.iris()
+#     fig = px.scatter(df, x="sepal_width", y="sepal_length", color="species", symbol="species")
+#     #return fig
+#     #test=1
+#     if data:
+#         test=1
+#         layout_StagePos = copy.deepcopy(layout)
 
-        data = [
-            dict(
-                type="scatter",
-                mode="lines",
-                name="Gas Produced (mcf)",
-                x=time,
-                y=stagePos,
-                line=dict(shape="spline", smoothing="2", color="#F9ADA0"),
-            )
-        ]
+#         stagePos = ExtractStringData(data[PrintStart:], "Stage is currently at: ", 3, "float")
+#         ExpEndList = ExtractStringData(data,  "Exp. end: ", 0, "str")
+#         time = list(CalcTotalTime(ExpEndList))
+#         time = range(0,len(stagePos))
 
-        #layout_StagePos["title"] = "Aggregate: "
-
-        #figure = dict(data=data, layout=layout)
-        #return figure
+#         data = px.scatter(df, x="sepal_width", y="sepal_length", color="species", symbol="species")
+#         #data = [
+#         #    dict(
+#         #        type="scatter",
+#         #        mode="lines",
+#         #        name="Gas Produced (mcf)",
+#         #        x=list(time),
+#         #        y=stagePos,
+#         #        line=dict(shape="spline", smoothing="2", color="#F9ADA0"),
+#         #    )
+#         #]
+#         fig = go.Figure(
+#             data=[go.Bar(x=[1, 2, 3], y=[1, 3, 2])]
+#         )
+#         return fig
 
 
 
@@ -817,64 +862,43 @@ def updateStagePosGraph(data):
 
 #    return 0
 
-# Selectors, main graph -> aggregate graph
-# @app.callback(
-#     Output("aggregate_graph", "figure"),
-#     [
-#         Input("well_statuses", "value"),
-#         Input("well_types", "value"),
-#         Input("year_slider", "value"),
-#         Input("main_graph", "hoverData"),
-#     ],
-# )
-# def make_aggregate_figure(well_statuses, well_types, year_slider, main_graph_hover):
+#Selectors, main graph -> aggregate graph
+@app.callback(
+    Output("aggregate_graph", "figure"),
+    [Input("input_data", "data")],
+)
+def make_aggregate_figure(input_data):
 
-#     layout_aggregate = copy.deepcopy(layout)
+    layout_stagePos = copy.deepcopy(layout)
+    stagePos = ExtractStringData(input_data[PrintStart:], "Stage is currently at: ", 3, "float")
+    ExpEndList = ExtractStringData(input_data[PrintStart:],  "Exp. end: ", 0, "str")
+    time = list(CalcTotalTime(ExpEndList))
+    if (len(ExpEndList) > len(stagePos)):
+        diff = len(ExpEndList) - len(stagePos)
+        ExpEndList = ExpEndList[diff:]
+    elif (len(stagePos) > len(ExpEndList)):
+        diff = len(stagePos) - len(ExpEndList)
+        stagePos = stagePos[diff:]
 
-#     if main_graph_hover is None:
-#         main_graph_hover = {
-#             "points": [
-#                 {"curveNumber": 4, "pointNumber": 569, "customdata": 31101173130000}
-#             ]
-#         }
+    data = [
+        dict(
+            type="scatter",
+            mode="lines",
+            name="Stage Position",
 
-#     chosen = [point["customdata"] for point in main_graph_hover["points"]]
-#     well_type = dataset[chosen[0]]["Well_Type"]
-#     dff = filter_dataframe(df, well_statuses, well_types, year_slider)
+            x=time,#list(range(0,len(stagePos))),
+            y=stagePos,
+            line=dict(shape="spline", smoothing="2", color="#F9ADA0"),
+        ),
+    ]
+    layout_stagePos["title"] = "Stage Position vs. Time"
+    layout_stagePos["showlegend"] = True
+    layout_stagePos["margin"]=dict(l=55, r=30, b=20, t=40)
+    layout_stagePos["xaxis"] = {"title": "Time (s)"}
+    layout_stagePos["yaxis"] = {"title": "Stage Position (mm)"}
 
-#     selected = dff[dff["Well_Type"] == well_type]["API_WellNo"].values
-#     index, gas, oil, water = produce_aggregate(selected, year_slider)
-
-#     data = [
-#         dict(
-#             type="scatter",
-#             mode="lines",
-#             name="Gas Produced (mcf)",
-#             x=index,
-#             y=gas,
-#             line=dict(shape="spline", smoothing="2", color="#F9ADA0"),
-#         ),
-#         dict(
-#             type="scatter",
-#             mode="lines",
-#             name="Oil Produced (bbl)",
-#             x=index,
-#             y=oil,
-#             line=dict(shape="spline", smoothing="2", color="#849E68"),
-#         ),
-#         dict(
-#             type="scatter",
-#             mode="lines",
-#             name="Water Produced (bbl)",
-#             x=index,
-#             y=water,
-#             line=dict(shape="spline", smoothing="2", color="#59C3C3"),
-#         ),
-#     ]
-#     layout_aggregate["title"] = "Aggregate: " + WELL_TYPES[well_type]
-
-#     figure = dict(data=data, layout=layout_aggregate)
-#     return figure
+    figure = dict(data=data, layout=layout_stagePos)
+    return figure
 
 # Main
 if __name__ == "__main__":
