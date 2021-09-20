@@ -41,6 +41,24 @@ layout = dict(
     paper_bgcolor="#F9F9F9",
     legend=dict(font=dict(size=10), orientation="h"),
     title="Satellite Overview",
+    xaxis={"title": "", "gridcolor": "#DE6DB51"},
+    yaxis={"title": "", "gridcolor": "#DE6DB51"},
+    mapbox=dict(
+        accesstoken=mapbox_access_token,
+        style="light",
+        center=dict(lon=-78.05, lat=42.54),
+        zoom=7,
+    ),
+)
+
+layoutGO = dict(
+    autosize=True,
+    margin=dict(l=30, r=30, b=20, t=40),
+    hovermode="closest",
+    plot_bgcolor="#F9F9F9",
+    paper_bgcolor="#F9F9F9",
+    legend=dict(font=dict(size=10), orientation="h"),
+    title="",
     xaxis={"title": ""},
     yaxis={"title": ""},
     mapbox=dict(
@@ -90,7 +108,7 @@ app.layout = html.Div(
                 html.Div(
                     [
                         html.A(
-                            html.Button("Learn More", id="learn-more-button"),
+                            html.Button("Download Report", id="learn-more-button"),
                             href="https://plot.ly/dash/pricing/",
                         )
                     ],
@@ -419,7 +437,7 @@ def InjectionTable(inputList):
 def update_text(input_data, filename):
     if (input_data):
         # image name
-        resin = ""
+        resin = "No Resin Selected"
 
         # layer count
         count = ExtractStringData(input_data[len(input_data)-50:], "Layer ", 0, "float")
@@ -427,7 +445,7 @@ def update_text(input_data, filename):
 
         # build height
         layerHeights = ExtractStringData(input_data[PrintStart:], "Moving Stage: ", 3, "float")
-        height = "%d mm" %(sum(layerHeights)/1000)
+        height = "%d um" %(sum(layerHeights)/1000)
 
         # total time
         ExpEndList = ExtractStringData(input_data[PrintStart:],  "Exp. end: ", 0, "str")
@@ -442,8 +460,6 @@ def update_text(input_data, filename):
     else:
         return "","","",""
         #return data[0] + " mcf", data[1] + " bbl", data[2] + " bbl", data[0]
-
-
 
 # Callback for file name
 @app.callback(
@@ -563,37 +579,62 @@ def modeTable(input_data):
 )
 def make_pie_figure(input_data):
     EndPoint = getTestKeyLoc(input_data, "Entering Printing Procedure")
+    layout_ps = copy.deepcopy(layoutGO)
     fig = make_subplots(
         rows=1, cols=2,
         column_widths=[0.5, 0.5],
         specs=[[{"type": "scatter"}, {"type": "scatter"}]],
         subplot_titles = ['Exposure & Dark Time', 
-                        'Layer Thickness']
+                        'Layer Thickness'],
     )
 
 
     ExpTime = ExtractStringData(input_data[EndPoint:], "Exposure PS: ", 2, "float")
     fig.add_trace(
-        go.Scatter(x=list(range(0,len(ExpTime))), y=ExpTime,
-                showlegend = False),
+        dict(
+            type="scatter",
+            mode="lines",
+            name="Exposure Time",
+            x=list(range(0,len(ExpTime))),
+            y=ExpTime,
+            line=dict(shape="spline", smoothing=0, color="#F9ADA0"),
+        ),
         row=1, col=1
     )
 
     DarkTime = ExtractStringData(input_data[EndPoint:], "Dark Time: ", 3, "float")
     fig.add_trace(
-        go.Scatter(x=list(range(0,len(DarkTime))), y=DarkTime, 
-                showlegend = False),
+        dict(
+            type="scatter",
+            mode="lines",
+            name="Dark Time",
+            x=list(range(0,len(DarkTime))),
+            y=DarkTime,
+            line=dict(shape="spline", smoothing=0, color="#849E68"),
+        ),
         row=1, col=1
     )
 
     LayerThickness = ExtractStringData(input_data[EndPoint:], "Moving Stage: ", 3,"float")
+    for i in range(0,len(LayerThickness)):
+        LayerThickness[i] = LayerThickness[i]/1000
     fig.add_trace(
-        go.Scatter(x=list(range(0,len(LayerThickness))), y=LayerThickness,
-                showlegend = False),
+        dict(
+            type="scatter",
+            mode="lines",
+            name="Layer Thickness",
+            x=list(range(0,len(LayerThickness))),
+            y=LayerThickness,
+            line=dict(shape="spline", smoothing=0, color="#59C3C3"),
+        ),
         row=1, col=2
     )
 
-
+    fig.update_layout(layout_ps)
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#E9E9E9', color='#A0A0A0')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#E9E9E9', color='#A0A0A0')
+    fig.update_layout(plot_bgcolor="#F9F9F9", paper_bgcolor="#F9F9F9")
+    
     return fig
 
 # Stage graph
