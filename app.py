@@ -85,24 +85,24 @@ app.layout = html.Div(
                             style={
                                 "height": "40px",
                                 "width": "auto",
-                                "margin-bottom": "15px",
+                                "margin-bottom": "0px",
                             },
                         )
                     ],
-                    className="one-third column",
+                    className="one-fourth column",
                 ),
                 html.Div(
                     [
                         html.Div(
                             [
-                                html.H3(
+                                html.H2(
                                     "CLIP3D Print Log Analysis",
-                                    style={"margin-bottom": "15px"},
+                                    style={"margin-bottom": "10px"},
                                 ),
                             ]
                         )
                     ],
-                    className="one-half column",
+                    className="one-fourth column",
                     id="title",
                 ),
                 html.Div(
@@ -110,15 +110,16 @@ app.layout = html.Div(
                         html.A(
                             html.Button("Download Report", id="learn-more-button"),
                             href="https://plot.ly/dash/pricing/",
+                            style={"margin-bottom": "20px"}
                         )
                     ],
-                    className="one-third column",
+                    className="one-fourth column",
                     id="button",
                 ),
             ],
             id="header",
             className="row flex-display",
-            style={"margin-bottom": "25px"},
+            style={"margin-bottom": "25px", "justify-content": "center"},
         ),
         html.Div(
             [
@@ -165,7 +166,7 @@ app.layout = html.Div(
                         html.Div(
                             [
                                 html.Div(
-                                    [html.P(id="resinText"), html.P("Resin")],
+                                    [html.H6(id="resinText"), html.P("Resin")],
                                     id="wells",
                                     className="mini_container",
                                 ),
@@ -220,6 +221,7 @@ app.layout = html.Div(
                 ),
             ],
             className="row flex-display",
+            style={"justify-content": "center"},
         ),
         html.Div(
             [
@@ -233,18 +235,19 @@ app.layout = html.Div(
                 ),
             ],
             className="row flex-display",
+            style={"justify-content": "center"}
         ),
         dcc.Textarea(
             id='textarea-example',
             value='Textarea content initialized\nwith multiple lines of text',
             style={'width': '100%', 'height': 300},
         ),
-        html.Div(id='textarea-example-output', style={'whiteSpace': 'pre-line'}),
+        html.Div(id='textarea-example-output', 
+                 style={'whiteSpace': 'pre-line', }),
     ],
     id="mainContainer",
-    style={"display": "flex", "flex-direction": "column"},
+    style={"display": "flex", "flex-direction": "column", "justify-content": "center"},
 )
-
 
 # Helper functions
 def parseContents(contents):
