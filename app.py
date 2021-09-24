@@ -155,9 +155,18 @@ app.layout = html.Div(
                         ),
                         html.P(
                             id="image-location"
-                        )
+                        ),
+                        html.Div(
+                            [   
+                                html.A(
+                                    html.Button("Use Example Log", id="Example_Data", n_clicks=0),
+                                    style={"margin-bottom": "20px"}
+                                )
+                            ],
+                            id="button2",
+                            style={"justify-content": "center"},
+                        ),   
                     ],
-
                     className="pretty_container four columns",
                     id="cross-filter-options",
                 ),
@@ -250,17 +259,19 @@ app.layout = html.Div(
 )
 
 # Helper functions
-def parseContents(contents):
+def parseContents(contents, type):
     stringlist = []
     if contents:
-        content_type, content_string = contents.split(",")
-        
-        decoded = base64.b64decode(content_string)
-        string = str(decoded, 'cp1252')
-
-        decodedlist = decoded.split(b'\r\n')
-        for i in range(1, len(decodedlist)):
-            stringlist.append(str(decodedlist[i], 'cp1252'))
+        if(type == 0):
+            content_type, content_string = contents.split(",")
+            decoded = base64.b64decode(content_string)
+            decodedlist = decoded.split(b'\r\n')
+            for i in range(1, len(decodedlist)):
+                stringlist.append(str(decodedlist[i], 'cp1252'))
+        elif(type == 1):
+            decoded = contents
+            decodedlist = decoded.split('\r\n')
+            stringlist = decodedlist
         
         testkey = "Entering Printing Procedure"
         for i in range(0,len(decodedlist)):
@@ -440,15 +451,16 @@ def InjectionTable(inputList):
 def update_text(input_data, filename):
     if (input_data):
         # image name
-        resin = "No Resin Selected"
+        resin = ExtractStringData(input_data[:200], "Resin: ", 0, "str")
+        #resin = "No Resin Selected"
 
         # layer count
         count = ExtractStringData(input_data[len(input_data)-50:], "Layer ", 0, "float")
         layers = "%d" %(max(count))
 
         # build height
-        layerHeights = ExtractStringData(input_data[PrintStart:], "Moving Stage: ", 3, "float")
-        height = "%d um" %(sum(layerHeights)/1000)
+        layerHeights = ExtractStringData(input_data[PrintStart:], "Moving stage: ", 3, "float")
+        height = "%d um" %(sum(layerHeights))
 
         # total time
         ExpEndList = ExtractStringData(input_data[PrintStart:],  "Exp. end: ", 0, "str")
@@ -495,12 +507,17 @@ def getImageLoc(input_data):
 # Callback for input data
 @app.callback(
     Output("input_data", "data"),
-    [Input('upload-data', 'contents')]
+    [Input('upload-data', 'contents'),
+     Input('Example_Data', "n_clicks")],
 )
-def txtToList(contents):
+def txtToList(contents, nClicks):
     outputList = []
     if contents:
-        outputList = parseContents(contents)
+        outputList = parseContents(contents ,0)
+    elif (nClicks > 0):
+        data = urllib.request.urlopen("https://raw.githubusercontent.com/TimSamuelsen/LogAnalysis/master/ExampleLog.txt").read().decode('cp1252')
+        outputList = parseContents(data, 1)
+
     return outputList
 
 #Test callback for text box
@@ -592,7 +609,7 @@ def make_pie_figure(input_data):
     )
 
 
-    ExpTime = ExtractStringData(input_data[EndPoint:], "Exposure PS: ", 2, "float")
+    ExpTime = ExtractStringData(input_data[EndPoint:], "Exposure: ", 3, "float")
     fig.add_trace(
         dict(
             type="scatter",
@@ -618,9 +635,7 @@ def make_pie_figure(input_data):
         row=1, col=1
     )
 
-    LayerThickness = ExtractStringData(input_data[EndPoint:], "Moving Stage: ", 3,"float")
-    for i in range(0,len(LayerThickness)):
-        LayerThickness[i] = LayerThickness[i]/1000
+    LayerThickness = ExtractStringData(input_data[EndPoint:], "Moving stage: ", 3,"float")
     fig.add_trace(
         dict(
             type="scatter",
@@ -629,6 +644,7 @@ def make_pie_figure(input_data):
             x=list(range(0,len(LayerThickness))),
             y=LayerThickness,
             line=dict(shape="spline", smoothing=0, color="#59C3C3"),
+            
         ),
         row=1, col=2
     )
@@ -636,6 +652,12 @@ def make_pie_figure(input_data):
     fig.update_layout(layout_ps)
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#E9E9E9', color='#A0A0A0')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#E9E9E9', color='#A0A0A0')
+    
+    fig.update_xaxes(title_text="Layer #", row=1, col=1)
+    fig.update_xaxes(title_text="Layer #", row=1, col=2)
+    fig.update_yaxes(title_text="Time (ms)", row=1, col=1)
+    fig.update_yaxes(title_text="Layer Thickness (um)", row=1, col=2)
+
     fig.update_layout(plot_bgcolor="#F9F9F9", paper_bgcolor="#F9F9F9")
     
     return fig
