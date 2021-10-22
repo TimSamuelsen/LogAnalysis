@@ -246,6 +246,20 @@ app.layout = html.Div(
             className="row flex-display",
             style={"justify-content": "center"}
         ),
+        html.Div(
+            [
+                html.Div(
+                    [dcc.Graph(id="ps_graph2")],
+                    className="pretty_container seven columns",
+                ),
+                html.Div(
+                    [dcc.Graph(id="stage_graph2")],
+                    className="pretty_container five columns",
+                ),
+            ],
+            className="row flex-display",
+            style={"justify-content": "center"}
+        ),
         dcc.Textarea(
             id='textarea-example',
             value='Textarea content initialized\nwith multiple lines of text',
@@ -459,7 +473,7 @@ def update_text(input_data, filename):
         layers = "%d" %(max(count))
 
         # build height
-        layerHeights = ExtractStringData(input_data[PrintStart:], "Moving stage: ", 3, "float")
+        layerHeights = ExtractStringData(input_data[PrintStart:], "Moving Stage: ", 3, "float")
         height = "%d um" %(sum(layerHeights))
 
         # total time
@@ -608,7 +622,6 @@ def make_pie_figure(input_data):
                         'Layer Thickness'],
     )
 
-
     ExpTime = ExtractStringData(input_data[EndPoint:], "Exposure: ", 3, "float")
     fig.add_trace(
         dict(
@@ -635,7 +648,7 @@ def make_pie_figure(input_data):
         row=1, col=1
     )
 
-    LayerThickness = ExtractStringData(input_data[EndPoint:], "Moving stage: ", 3,"float")
+    LayerThickness = ExtractStringData(input_data[EndPoint:], "Moving Stage: ", 3,"float")
     fig.add_trace(
         dict(
             type="scatter",
@@ -648,6 +661,9 @@ def make_pie_figure(input_data):
         ),
         row=1, col=2
     )
+
+
+
 
     fig.update_layout(layout_ps)
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#E9E9E9', color='#A0A0A0')
