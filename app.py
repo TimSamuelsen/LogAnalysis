@@ -1,10 +1,9 @@
 # Import required libraries
-import pickle
 import copy
 import pathlib
 import urllib.request
 import dash
-import dash_table
+from dash import dash_table
 import math
 import datetime as dt
 import pandas as pd
@@ -14,9 +13,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 from dash.dependencies import Input, Output, State, ClientsideFunction
-import dash_core_components as dcc
-import dash_html_components as html
-
+from dash import dcc
+from dash import html
 # get relative data folder
 PATH = pathlib.Path(__file__).parent
 DATA_PATH = PATH.joinpath("data").resolve()
@@ -25,6 +23,7 @@ PrintStart = 20
 
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}],
+    assets_folder = str(PATH.joinpath("assets").resolve())
 )
 app.title = "CLIP3D Log Analysis"
 server = app.server
@@ -85,11 +84,11 @@ app.layout = html.Div(
                             style={
                                 "height": "40px",
                                 "width": "auto",
-                                "margin-bottom": "0px",
+                                "marginBottom": "0px",
                             },
                         )
                     ],
-                    className="one-fourth column",
+                    className="three columns",
                 ),
                 html.Div(
                     [
@@ -97,29 +96,32 @@ app.layout = html.Div(
                             [
                                 html.H2(
                                     "CLIP3D Print Log Analysis",
-                                    style={"margin-bottom": "10px"},
+                                    style={"marginBottom": "10px"},
                                 ),
                             ]
                         )
                     ],
-                    className="one-fourth column",
+                    className="four columns",
                     id="title",
                 ),
                 html.Div(
                     [
-                        html.A(
-                            html.Button("Download Report", id="learn-more-button"),
-                            href="https://plot.ly/dash/pricing/",
-                            style={"margin-bottom": "20px"}
-                        )
+                        #html.Button('click', id='run')
+                        #html.A(
+                        #    html.Button("Download Report", id="learn-more-button"),
+                        #    href="https://plot.ly/dash/pricing/",
+                        #    style={"margin-bottom": "20px"}
+                        #)
+                        html.Button('CREATE PDF', id='run')
                     ],
-                    className="one-fourth column",
+                    className="three columns",
                     id="button",
+                    style={"justifyContent": "right"}
                 ),
             ],
             id="header",
             className="row flex-display",
-            style={"margin-bottom": "25px", "justify-content": "center"},
+            style={"marginBottom": "25px", "justifyContent": "center"},
         ),
         html.Div(
             [
@@ -160,14 +162,14 @@ app.layout = html.Div(
                             [   
                                 html.A(
                                     html.Button("Use Example Log", id="Example_Data", n_clicks=0),
-                                    style={"margin-bottom": "20px"}
+                                    style={"marginBottom": "20px"}
                                 )
                             ],
                             id="button2",
-                            style={"justify-content": "center"},
+                            style={"justifyContent": "center"},
                         ),   
                     ],
-                    className="pretty_container four columns",
+                    className="pretty_container three columns",
                     id="cross-filter-options",
                 ),
                 html.Div(
@@ -226,50 +228,50 @@ app.layout = html.Div(
                         ),
                     ],
                     id="right-column",
-                    className="eight columns",
+                    className="seven columns",
                 ),
             ],
             className="row flex-display",
-            style={"justify-content": "center"},
+            style={"justifyContent": "center"},
         ),
         html.Div(
             [
                 html.Div(
                     [dcc.Graph(id="ps_graph")],
-                    className="pretty_container seven columns",
+                    className="pretty_container six columns",
                 ),
                 html.Div(
                     [dcc.Graph(id="stage_graph")],
-                    className="pretty_container five columns",
+                    className="pretty_container four columns",
                 ),
             ],
             className="row flex-display",
-            style={"justify-content": "center"}
+            style={"justifyContent": "center"}
         ),
         html.Div(
             [
                 html.Div(
                     [dcc.Graph(id="ps_graph2")],
-                    className="pretty_container seven columns",
+                    className="pretty_container six columns",
                 ),
                 html.Div(
                     [dcc.Graph(id="stage_graph2")],
-                    className="pretty_container five columns",
+                    className="pretty_container four columns",
                 ),
             ],
             className="row flex-display",
-            style={"justify-content": "center"}
+            style={"justifyContent": "center"}
         ),
-        dcc.Textarea(
-            id='textarea-example',
-            value='Textarea content initialized\nwith multiple lines of text',
-            style={'width': '100%', 'height': 300},
-        ),
+        #dcc.Textarea(
+        #    id='textarea-example',
+        #3    value='Textarea content initialized\nwith multiple lines of text',
+        #    style={'width': '50%', 'height': 300},
+        #),
         html.Div(id='textarea-example-output', 
                  style={'whiteSpace': 'pre-line', }),
     ],
     id="mainContainer",
-    style={"display": "flex", "flex-direction": "column", "justify-content": "center"},
+    style={"display": "flex", "flexDirection": "column", "justifyContent": "center"},
 )
 
 # Helper functions
@@ -535,19 +537,19 @@ def txtToList(contents, nClicks):
     return outputList
 
 #Test callback for text box
-@app.callback(
-    Output('textarea-example', 'value'),
-    [Input('input_data', 'data')]
-)
-def RawTextBox(data):
-    if data:
-        output = "List length: %d" %(len(data))
-        #stagePos = ExtractStringData(data[PrintStart:], "Stage is currently at: ", 3, "string")
+#@app.callback(
+#    Output('textarea-example', 'value'),
+#    [Input('input_data', 'data')]
+#)
+#def RawTextBox(data):
+#    if data:
+#        output = "List length: %d" %(len(data))
+#        #stagePos = ExtractStringData(data[PrintStart:], "Stage is currently at: ", 3, "string")
         #output = ",".join(stagePos)
         #output = "Print start: %d" %(PrintStart) 
-        return output
-    else:
-        return 'No log file selected'
+#        return output
+#    else:
+#        return 'No log file selected'
 
 # Print modes table
 @app.callback(
@@ -715,6 +717,15 @@ def make_stage_figure(input_data):
 
     figure = dict(data=data, layout=layout_stagePos)
     return figure
+
+#@app.callback(
+#Output("javascript", "run"),
+#[Input("click1", "n_clicks")])
+#def myfun(x):
+#    if x:
+#        return "window.print()"
+#    return ""
+
 
 # Main
 if __name__ == "__main__":
